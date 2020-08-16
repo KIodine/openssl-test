@@ -1,0 +1,32 @@
+- Keys generated via `genrsa`(RSA) or `ec`(Elliptic Curve) are
+  stored with `ASN.1-DER` **binary** format and encoded into
+  `PEM`(Privacy Enhanced Mail) format, which is base64 encoded.
+- The packaging view will be:
+  - Certificate/Key:
+    PEM-----------------+  : base64 encoded
+    |  DER ASN.1--------+  : binary format
+    |  |  X.509---------+  : entries data must have
+    |  |  |  <data...>  |
+    +--+--+-------------+
+- `openssl rand -hex -out <file> <bytes>` generates random bytes,
+  which is useful for making a passpharse for key file.
+- Part of openssl subcmd can be configured via prepared file and
+  they have own default config section to read.
+  For config file reading:
+  - Openssl config generals.
+    https://www.openssl.org/docs/manmaster/man5/config.html
+  - X509v3 configs.
+    https://www.openssl.org/docs/manmaster/man5/x509v3_config.html
+  Commonly used commands:
+  - `req` - CSR file generation.
+    https://www.openssl.org/docs/manmaster/man1/openssl-req.html
+  - `ca` - CSR file signing.
+    https://www.openssl.org/docs/manmaster/man1/openssl-ca.html
+  - `x509` - x509 certs reading.
+    https://www.openssl.org/docs/manmaster/man1/openssl-x509.html
+  - `verify` - Certificate verifying.
+    https://www.openssl.org/docs/manmaster/man1/openssl-verify.html
+  - `ocsp` - OCSP client/server program.
+    https://www.openssl.org/docs/manmaster/man1/openssl-ocsp.html
+- master branch man page:
+  https://www.openssl.org/docs/manmaster/man1/
