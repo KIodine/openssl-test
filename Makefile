@@ -8,6 +8,8 @@ NAMES = ${ROOT_NAME} ${SUB_NAME} ${SRVR_NAME}# ${CLI_NAME}
 
 EC_CURVE = prime256v1
 
+CONF_DIR = ./confs
+
 # > PROPOSAL: rename these directories?
 # NOTE: These names are fixed in `root-ca.conf`.
 # Certs generated.
@@ -71,9 +73,9 @@ ${KEY_DST}: ${CA_PRIVDIR}/%.key: |gen_basedirs
 # Seems "order-only" req stops rebuild propagating.
 # ---
 
-# Gen root CA.
+# --- Gen root CA.
 ${CSR_DIR}/${ROOT_NAME}.csr: ${CA_PRIVDIR}/${ROOT_NAME}.key
-	openssl req -new -config ${ROOT_NAME}.conf \
+	openssl req -new -config ${CONF_DIR}/${ROOT_NAME}.conf \
 		-out $@ \
 		-key $< \
 		-passin file:${KEY_SECRET_DIR}/${ROOT_NAME}.SECRET
@@ -81,36 +83,36 @@ ${CSR_DIR}/${ROOT_NAME}.csr: ${CA_PRIVDIR}/${ROOT_NAME}.key
 # NOTE: Don't know why `ca` core dumps.
 #		*See `root-ca.conf`.
 ${ROOT_NAME}.crt: ${CSR_DIR}/${ROOT_NAME}.csr
-	openssl ca -selfsign -config ${ROOT_NAME}.conf \
+	openssl ca -selfsign -config ${CONF_DIR}/${ROOT_NAME}.conf \
 		-in $< -out $@ \
 		-passin file:${KEY_SECRET_DIR}/${ROOT_NAME}.SECRET \
 		-extensions ca_selfsign_ext -batch
 gen_rootca: ${ROOT_NAME}.crt
 
 
-# Gen sub CA.
+# --- Gen sub CA.
 ${CSR_DIR}/${SUB_NAME}.csr: ${CA_PRIVDIR}/${SUB_NAME}.key ${ROOT_NAME}.crt
-	openssl req -new -config ${SUB_NAME}.conf \
+	openssl req -new -config ${CONF_DIR}/${SUB_NAME}.conf \
 		-out $@ \
 		-key $< \
 		-passin file:${KEY_SECRET_DIR}/${SUB_NAME}.SECRET
 
 ${SUB_NAME}.crt: ${CSR_DIR}/${SUB_NAME}.csr
-	openssl ca -config ${ROOT_NAME}.conf \
+	openssl ca -config ${CONF_DIR}/${ROOT_NAME}.conf \
 		-in $< -out $@ \
 		-passin file:${KEY_SECRET_DIR}/${ROOT_NAME}.SECRET \
 		-extensions sub_ca_sign_ext -batch
 gen_sub: ${SUB_NAME}.crt
 
-# Gen server cert.
+# --- Gen server cert.
 ${CSR_DIR}/${SRVR_NAME}.csr: ${CA_PRIVDIR}/${SRVR_NAME}.key ${SUB_NAME}.crt
-	openssl req -new -config ${SRVR_NAME}-req.conf \
+	openssl req -new -config ${CONF_DIR}/${SRVR_NAME}-req.conf \
 		-out $@ \
 		-key $< \
 		-passin file:${KEY_SECRET_DIR}/${SRVR_NAME}.SECRET
 
 ${SRVR_NAME}.crt: ${CSR_DIR}/${SRVR_NAME}.csr
-	openssl ca -config ${SUB_NAME}.conf \
+	openssl ca -config ${CONF_DIR}/${SUB_NAME}.conf \
 		-in $< -out $@ \
 		-passin file:${KEY_SECRET_DIR}/${SUB_NAME}.SECRET \
 		-extensions server_ext -batch
@@ -119,13 +121,13 @@ gen_server: ${SRVR_NAME}.crt
 # TODO: gen_client
 # --- Not tested ---
 ${CSR_DIR}/${CLI_NAME}.csr: ${CA_PRIVDIR}/${CLI_NAME}.key ${SUB_NAME}.crt
-	openssl req -new -config ${CLI_NAME}-req.conf \
+	openssl req -new -config ${CONF_DIR}/${CLI_NAME}-req.conf \
 		-out $@ \
 		-key $< \
 		-passin file:${KEY_SECRET_DIR}/${CLI_NAME}.SECRET
 
 ${CLI_NAME}.crt: ${CSR_DIR}/${CLI_NAME}.csr
-	openssl ca -config ${SUB_NAME}.conf \
+	openssl ca -config ${CONF_DIR}/${SUB_NAME}.conf \
 		-in $< -out $@ \
 		-passing file:${KEY_SECRET_DIR}/${SUB_NAME}.SECRET \
 		-extensions client_ext -batch
