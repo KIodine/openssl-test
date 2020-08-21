@@ -4,7 +4,7 @@ SRVR_NAME = server
 CLI_NAME  = client
 
 # Add entry after adding new name above.
-NAMES = ${ROOT_NAME} ${SUB_NAME} ${SRVR_NAME}# ${CLI_NAME}
+NAMES = ${ROOT_NAME} ${SUB_NAME} ${SRVR_NAME} ${CLI_NAME}
 
 EC_CURVE = prime256v1
 
@@ -129,7 +129,7 @@ ${CSR_DIR}/${CLI_NAME}.csr: ${CA_PRIVDIR}/${CLI_NAME}.key ${SUB_NAME}.crt
 ${CLI_NAME}.crt: ${CSR_DIR}/${CLI_NAME}.csr
 	openssl ca -config ${CONF_DIR}/${SUB_NAME}.conf \
 		-in $< -out $@ \
-		-passing file:${KEY_SECRET_DIR}/${SUB_NAME}.SECRET \
+		-passin file:${KEY_SECRET_DIR}/${SUB_NAME}.SECRET \
 		-extensions client_ext -batch
 gen_client: ${CLI_NAME}.crt
 # --- Not tested ---
@@ -145,10 +145,11 @@ check_chain: ${addsuffix .crt,${NAMES}}
 		-untrusted sub-ca.crt \
 		server.crt
 
-build_bundle: ${addsuffix .crt,${NAMES}}
-	openssl x509 -in ${SRVR_NAME}.crt -outform PEM -out - >> ca-bundle.pem
-	openssl x509 -in ${SUB_NAME}.crt -outform PEM -out - >> ca-bundle.pem
-	openssl x509 -in ${ROOT_NAME}.crt -outform PEM -out - >> ca-bundle.pem
+check_client: ${addsuffix .crt,${NAMES}}
+	openssl verify \
+		-CAfile root-ca.crt \
+		-untrusted sub-ca.crt \
+		client.crt
 
 clean:
 	rm -rf ${CA_CERTDIR} ${CA_DBDIR} ${CA_PRIVDIR} \
