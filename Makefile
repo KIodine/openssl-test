@@ -19,17 +19,17 @@ CERTOUT_DIR = ./certout
 
 # NOTE: These names are fixed in `root-ca.conf`.
 # Where stuffs making certs are stored.
-# CA_OBJDIR = ./objs
+CA_OBJDIR = ./objs
 # Certs generated.
-CA_CERTDIR = certs
+CA_CERTDIR = ${CA_OBJDIR}/certs
 # Private key storage.
-CA_PRIVDIR = private
+CA_PRIVDIR = ${CA_OBJDIR}/private
 # Cert-signing datas.
-CA_DBDIR   = db
+CA_DBDIR   = ${CA_OBJDIR}/db
 CA_DB_FILES = index serial crlnumber
 
 # TODO: Use identifier other then all cap `SECRET`.
-KEY_SECRET_DIR = secret
+KEY_SECRET_DIR = ${CA_OBJDIR}/secret
 KEY_NAMES = $(addsuffix .key,${NAMES})
 KEY_DST = ${addprefix ${CA_PRIVDIR}/,${KEY_NAMES}}
 SECRET_EXT = secret
@@ -45,7 +45,7 @@ else
 endif
 
 # CSRs generated.
-CSR_DIR = csr
+CSR_DIR = ${CA_OBJDIR}/csr
 
 # ------------------------------------------------------------------ #
 # 	Automatic "yes" for CA signing CSR is enabled (the `-batch`		 #
@@ -109,7 +109,7 @@ gen_rootca: ${CERTOUT_DIR}/${ROOT_NAME}.crt
 
 
 # --- Gen sub CA.
-${CSR_DIR}/${SUB_NAME}.csr: ${CA_PRIVDIR}/${SUB_NAME}.key ${ROOT_NAME}.crt
+${CSR_DIR}/${SUB_NAME}.csr: ${CA_PRIVDIR}/${SUB_NAME}.key ${CERTOUT_DIR}/${ROOT_NAME}.crt
 	openssl req -new -config ${CONF_DIR}/${SUB_NAME}.conf \
 		-out $@ \
 		-key $< \
@@ -123,7 +123,7 @@ ${CERTOUT_DIR}/${SUB_NAME}.crt: ${CSR_DIR}/${SUB_NAME}.csr
 gen_sub: ${CERTOUT_DIR}/${SUB_NAME}.crt
 
 # --- Gen server cert.
-${CSR_DIR}/${SRVR_NAME}.csr: ${CA_PRIVDIR}/${SRVR_NAME}.key ${SUB_NAME}.crt
+${CSR_DIR}/${SRVR_NAME}.csr: ${CA_PRIVDIR}/${SRVR_NAME}.key ${CERTOUT_DIR}/${SUB_NAME}.crt
 	openssl req -new -config ${CONF_DIR}/${SRVR_NAME}-req.conf \
 		-out $@ \
 		-key $< \
@@ -138,7 +138,7 @@ gen_server: ${CERTOUT_DIR}/${SRVR_NAME}.crt
 
 # TODO: gen_client
 # --- Not tested ---
-${CSR_DIR}/${CLI_NAME}.csr: ${CA_PRIVDIR}/${CLI_NAME}.key ${SUB_NAME}.crt
+${CSR_DIR}/${CLI_NAME}.csr: ${CA_PRIVDIR}/${CLI_NAME}.key ${CERTOUT_DIR}/${SUB_NAME}.crt
 	openssl req -new -config ${CONF_DIR}/${CLI_NAME}-req.conf \
 		-out $@ \
 		-key $< \
@@ -157,19 +157,25 @@ gen_dhparam:
 
 
 # --- Other utils ---
-check_chain: ${addsuffix .crt,${CERTOUT_DIR}/${NAMES}}
+CERT_DSTS = ${addprefix ${CERTOUT_DIR}/,${NAMES}}
+KEY_DIR = ./keyout
+
+check_chain: ${addsuffix .crt,${CERT_DSTS}}
 	openssl verify \
 		-CAfile ${CERTOUT_DIR}/root-ca.crt \
 		-untrusted ${CERTOUT_DIR}/sub-ca.crt \
 		${CERTOUT_DIR}/server.crt
 
-check_client: ${addsuffix .crt,${CERTOUT_DIR}/${NAMES}}
+check_client: ${addsuffix .crt,${CERT_DSTS}}
 	openssl verify \
 		-CAfile ${CERTOUT_DIR}/root-ca.crt \
 		-untrusted ${CERTOUT_DIR}/sub-ca.crt \
 		${CERTOUT_DIR}/client.crt
 
+copy_keys: ${addsuffix .crt,${CERT_DSTS}}
+	mkdir -p ${KEY_DIR}
+	chmod 0700 ${KEY_DIR}
+	cp ${CA_PRIVDIR}/* ${KEY_DIR}
+
 clean:
-	rm -rf ${CA_CERTDIR} ${CA_DBDIR} ${CA_PRIVDIR} \
-		${KEY_SECRET_DIR} ${CSR_DIR} ${CERTOUT_DIR}
-	rm -rf *.crt *.csr
+	rm -rf ${CA_OBJDIR}/ ${CERTOUT_DIR}/ ${KEY_DIR}/
